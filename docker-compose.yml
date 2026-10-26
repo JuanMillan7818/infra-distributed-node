@@ -1,0 +1,13 @@
+# Orquestador raíz del Sistema Distribuido.
+# Cada servicio vive en services/<nombre>/compose.yml y se activa agregándolo a "include".
+# Requiere Docker Compose >= 2.20 (soporte de "include").
+# Uso recomendado: ./sdctl.sh <comando>  (crea la red y los secretos antes de levantar).
+
+name: sistema-distribuido
+
+include:
+  - services/portainer/compose.yml   # Fase 1 - Gestión web
+  # - services/mosquitto/compose.yml # Fase 2 - Mensajería MQTT
+  # - services/monitoring/compose.yml# Fase 3 - Glances / Grafana
+  # - services/wireguard/compose.yml # Fase 4 - VPN
+  # - services/samba/compose.yml     # Fase 5 - Almacenamiento
