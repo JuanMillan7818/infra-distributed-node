@@ -1,7 +1,7 @@
 # Orquestador raíz del Sistema Distribuido.
 # Cada servicio vive en services/<nombre>/compose.yml y se activa agregándolo a "include".
 # Requiere Docker Compose >= 2.20 (soporte de "include").
-# Uso recomendado: ./sdctl.sh <comando>  (crea la red y los secretos antes de levantar).
+# Uso recomendado: ./manage.sh <comando>  (crea la red y los secretos antes de levantar).
 
 name: sistema-distribuido
 

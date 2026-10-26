@@ -14,7 +14,7 @@ services:
     secrets:
       - portainer_admin_password
     networks:
-      - red-distribuida
+      - red-interna
     deploy:
       resources:
         limits:
@@ -29,6 +29,6 @@ volumes:
   portainer_data:
 
 networks:
-  red-distribuida:
-    name: red-distribuida
+  red-interna:
+    name: red-interna
     external: true
