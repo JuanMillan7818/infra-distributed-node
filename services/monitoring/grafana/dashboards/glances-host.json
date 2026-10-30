@@ -514,8 +514,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "label_replace({__name__=~\"glances_network_.+_bytes_recv_rate_per_sec\"}, \"iface\", \"$1\", \"__name__\", \"glances_network_(.+)_bytes_recv_rate_per_sec\")",
-          "legendFormat": "{{iface}} rx",
+          "expr": "glances_network_bytes_recv_rate_per_sec",
+          "legendFormat": "{{interface_name}} rx",
           "refId": "A"
         },
         {
@@ -523,8 +523,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "label_replace({__name__=~\"glances_network_.+_bytes_sent_rate_per_sec\"}, \"iface\", \"$1\", \"__name__\", \"glances_network_(.+)_bytes_sent_rate_per_sec\")",
-          "legendFormat": "{{iface}} tx",
+          "expr": "glances_network_bytes_sent_rate_per_sec",
+          "legendFormat": "{{interface_name}} tx",
           "refId": "B"
         }
       ],
@@ -572,8 +572,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "label_replace({__name__=~\"glances_fs_.+_percent\"}, \"mount\", \"$1\", \"__name__\", \"glances_fs_(.+)_percent\")",
-          "legendFormat": "{{mount}}",
+          "expr": "glances_fs_percent",
+          "legendFormat": "{{mnt_point}}",
           "refId": "A"
         }
       ],
@@ -623,8 +623,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "label_replace({__name__=~\"glances_diskio_.+_read_bytes_rate_per_sec\"}, \"disk\", \"$1\", \"__name__\", \"glances_diskio_(.+)_read_bytes_rate_per_sec\")",
-          "legendFormat": "{{disk}} lectura",
+          "expr": "glances_diskio_read_bytes_rate_per_sec{disk_name=~\"(sd|vd|xvd)[a-z]+|nvme[0-9]+n[0-9]+\"}",
+          "legendFormat": "{{disk_name}} lectura",
           "refId": "A"
         },
         {
@@ -632,8 +632,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "label_replace({__name__=~\"glances_diskio_.+_write_bytes_rate_per_sec\"}, \"disk\", \"$1\", \"__name__\", \"glances_diskio_(.+)_write_bytes_rate_per_sec\")",
-          "legendFormat": "{{disk}} escritura",
+          "expr": "glances_diskio_write_bytes_rate_per_sec{disk_name=~\"(sd|vd|xvd)[a-z]+|nvme[0-9]+n[0-9]+\"}",
+          "legendFormat": "{{disk_name}} escritura",
           "refId": "B"
         }
       ],

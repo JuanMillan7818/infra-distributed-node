@@ -15,6 +15,9 @@ services:
       - ./glances/glances.conf:/glances/conf/glances.conf:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro   # Métricas por contenedor
       - /etc/os-release:/etc/os-release:ro
+      # Raíz del host en solo lectura: el "/" del contenedor es overlay y Glances lo omite,
+      # así que el uso de disco del servidor se lee en el montaje /rootfs.
+      - /:/rootfs:ro
     deploy:
       resources:
         limits:
