@@ -69,19 +69,25 @@ cmd_init() {
   if command -v systemctl >/dev/null && ! systemctl is-enabled --quiet docker 2>/dev/null; then
     warn "Docker no arranca con el sistema. Ejecuta: sudo systemctl enable docker containerd"
   fi
-  # Cada servicio puede aportar su propio init (secretos, configs) en services/<svc>/init.sh
-  for svc in $(available_services); do
-    local hook="$ROOT/services/$svc/init.sh"
-    if [[ -f "$hook" ]]; then
-      info "init: $svc"
-      # shellcheck source=/dev/null
-      source "$hook"
-    fi
-  done
+  run_init_hooks
   info "Inicialización lista."
 }
 
-cmd_up()      { require_docker; ensure_network; compose up -d --remove-orphans "$@"; cmd_status; }
+# Cada servicio puede aportar su propio init (secretos, configs) en services/<svc>/init.sh.
+# Son idempotentes: up/rebuild los ejecutan para que nunca falte un secreto recién agregado.
+run_init_hooks() {
+  for svc in $(available_services); do
+    local hook="$ROOT/services/$svc/init.sh"
+    # shellcheck source=/dev/null
+    [[ -f "$hook" ]] && source "$hook"
+  done
+  return 0
+}
+
+cmd_up() {
+  require_docker; ensure_network; run_init_hooks
+  compose up -d --remove-orphans "$@"; cmd_status
+}
 cmd_down() {
   if (( $# )); then compose rm -sf "$@"; else compose down; fi
 }
@@ -109,7 +115,7 @@ cmd_restart() {
 # Reinicio forzado: elimina contenedores, descarga imágenes nuevas, reconstruye sin caché
 # y recrea en segundo plano (-d). Conserva los volúmenes con nombre (datos).
 cmd_rebuild() {
-  require_docker; check_services "$@"; ensure_network
+  require_docker; check_services "$@"; ensure_network; run_init_hooks
   info "Reinicio forzado sin caché: ${*:-todos los servicios}"
   cmd_down "$@"
   compose build --no-cache --pull "$@"
