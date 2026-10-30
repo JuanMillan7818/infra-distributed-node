@@ -51,7 +51,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: 512M
+          memory: 384M   # Uso medido ~115 MiB con 15 días de retención
     logging:
       driver: json-file
       options:
@@ -82,11 +82,13 @@ services:
       - red-interna
     depends_on:
       - prometheus
+    # 512M: el binario y los plugins de Grafana cuentan contra el límite al leerse a memoria.
+    # Con 256M los descarta y relee del disco sin parar (GB de BLOCK I/O) y las consultas expiran.
     deploy:
       resources:
         limits:
           cpus: "0.50"
-          memory: 256M
+          memory: 512M
     logging:
       driver: json-file
       options:
