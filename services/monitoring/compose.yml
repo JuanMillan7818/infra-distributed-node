@@ -66,6 +66,9 @@ services:
       - "${GRAFANA_PORT:-3000}:3000"
     environment:
       - TZ=America/Bogota
+      # URL con la que se abre Grafana en el navegador. Si no coincide (proxy de Codespaces,
+      # dominio propio), Grafana rechaza las consultas por origen distinto.
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3000/}
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana_admin_password
       - GF_USERS_ALLOW_SIGN_UP=false
