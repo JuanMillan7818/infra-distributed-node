@@ -5,3 +5,5 @@ backups/
 *.pdf
 
 /docs
+
+/services/mosquitto/data/mosquitto.db
