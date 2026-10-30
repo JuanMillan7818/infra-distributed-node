@@ -7,7 +7,7 @@ name: sistema-distribuido
 
 include:
   - services/portainer/compose.yml   # Fase 1 - Gestión web
-  # - services/mosquitto/compose.yml # Fase 2 - Mensajería MQTT
+  - services/mosquitto/compose.yml # Fase 2 - Mensajería MQTT
   # - services/monitoring/compose.yml# Fase 3 - Glances / Grafana
   # - services/wireguard/compose.yml # Fase 4 - VPN
-  # - services/samba/compose.yml     # Fase 5 - Almacenamiento
+  - services/samba/compose.yml     # Fase 5 - Almacenamiento

@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  # Servicio de Samba
+  samba:
+    image: dperson/samba
+    container_name: ubuntu-samba
+    environment:
+      - WORKGROUP=WORKGROUP
+      - SHARE=publico;/samba/shared;yes;no;yes;all;none
+    ports:
+      - "139:139"
+      - "445:445"
+    volumes:
+      - samba_data:/samba/shared
+    restart: unless-stopped
+    networks:
+      - red-interna
+
+networks:
+  red-interna:
+    driver: bridge
+
+volumes:
+  samba_data:
