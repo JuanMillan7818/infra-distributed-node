@@ -1,0 +1,107 @@
+# Fase 3 - Monitoreo: Glances (recolector) -> Prometheus (almacén) -> Grafana (dashboard).
+services:
+  glances:
+    image: nicolargo/glances:${GLANCES_TAG:-latest-full}
+    container_name: glances
+    restart: unless-stopped
+    # Red y PID del host: mide interfaces y procesos reales de la máquina, no los del contenedor.
+    # Por eso no está en red-interna; Prometheus lo alcanza vía host.docker.internal:9091.
+    network_mode: host
+    pid: host
+    environment:
+      - TZ=America/Bogota
+      - GLANCES_OPT=-C /glances/conf/glances.conf --export prometheus --quiet -t 5
+    volumes:
+      - ./glances/glances.conf:/glances/conf/glances.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # Métricas por contenedor
+      - /etc/os-release:/etc/os-release:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "0.30"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  prometheus:
+    image: prom/prometheus:${PROMETHEUS_TAG:-latest}
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      - --web.enable-lifecycle   # Recarga config: curl -X POST localhost:9090/-/reload
+    # Solo localhost: consultar vía túnel SSH (ssh -L 9090:localhost:9090 ...). Grafana usa la red interna.
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - red-interna
+    depends_on:
+      - glances
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  grafana:
+    image: grafana/grafana-oss:${GRAFANA_TAG:-latest}
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - TZ=America/Bogota
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana_admin_password
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/dashboards/glances-host.json
+    secrets:
+      - grafana_admin_password
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - red-interna
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+secrets:
+  grafana_admin_password:
+    file: ../../secrets/grafana_admin_password.txt
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  red-interna:
+    name: red-interna
+    external: true

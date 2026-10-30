@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Servicio de Samba
   samba:
@@ -8,18 +6,26 @@ services:
     environment:
       - WORKGROUP=WORKGROUP
       - SHARE=publico;/samba/shared;yes;no;yes;all;none
+    # En Windows (local) 139/445 los ocupa el propio SMB del sistema: usar otros en .env.
     ports:
-      - "139:139"
-      - "445:445"
+      - "${SAMBA_NETBIOS_PORT:-139}:139"
+      - "${SAMBA_PORT:-445}:445"
     volumes:
       - samba_data:/samba/shared
     restart: unless-stopped
     networks:
       - red-interna
+    # Rotación de logs: máx. 3 archivos de 10 MB (30 MB por contenedor).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   red-interna:
-    driver: bridge
+    name: red-interna
+    external: true
 
 volumes:
   samba_data:

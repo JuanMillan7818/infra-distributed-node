@@ -1,15 +1,26 @@
-version: '3.8'
-
 services:
   mosquitto:
     image: eclipse-mosquitto:latest
     container_name: mosquitto_broker
-    restart: always
+    restart: unless-stopped
     ports:
       - "${MQTT_PORT:-1883}:1883"
+    # Logs solo por stdout (ver mosquitto.conf): Docker los rota con "logging".
     volumes:
-      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./data:/mosquitto/data
-      - ./log:/mosquitto/log
     environment:
       - TZ=America/Bogota
+    networks:
+      - red-interna
+    # Rotación de logs: máx. 3 archivos de 10 MB (30 MB por contenedor).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  red-interna:
+    name: red-interna
+    external: true

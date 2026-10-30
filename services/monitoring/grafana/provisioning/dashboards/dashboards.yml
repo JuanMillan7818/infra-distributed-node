@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+  - name: sistema-distribuido
+    folder: Sistema Distribuido
+    type: file
+    allowUiUpdates: true   # Se puede editar en la UI, pero el JSON del repo manda al reiniciar
+    options:
+      path: /etc/grafana/dashboards

@@ -20,6 +20,12 @@ services:
         limits:
           cpus: "0.50"
           memory: 256M
+    # Rotación de logs: máx. 3 archivos de 10 MB (30 MB por contenedor).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 secrets:
   portainer_admin_password:

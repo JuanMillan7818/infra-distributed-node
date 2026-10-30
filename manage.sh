@@ -6,6 +6,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 NETWORK="red-interna"
+# Subred fija: la VPN (wg-easy) la anuncia a los clientes en "Allowed IPs".
+NETWORK_SUBNET="172.30.0.0/16"
 SECRETS_DIR="$ROOT/secrets"
 BACKUP_DIR="$ROOT/backups"
 
@@ -36,8 +38,15 @@ require_docker() {
 
 ensure_network() {
   if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
-    docker network create --driver bridge "$NETWORK" >/dev/null
-    info "Red '$NETWORK' creada."
+    docker network create --driver bridge --subnet "$NETWORK_SUBNET" "$NETWORK" >/dev/null
+    info "Red '$NETWORK' creada ($NETWORK_SUBNET)."
+    return
+  fi
+  local subnet
+  subnet=$(docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}' "$NETWORK")
+  if [[ "$subnet" != "$NETWORK_SUBNET" ]]; then
+    warn "Red '$NETWORK' usa $subnet (se espera $NETWORK_SUBNET). Para recrearla:"
+    warn "  manage down && docker network rm $NETWORK && manage up"
   fi
 }
 
@@ -56,6 +65,10 @@ cmd_init() {
   require_docker
   [[ -f "$ROOT/.env" ]] || { cp "$ROOT/.env.example" "$ROOT/.env"; warn "Creado .env desde .env.example: revisa sus valores."; }
   ensure_network
+  # restart: unless-stopped solo sobrevive a reinicios del servidor si Docker arranca con el sistema.
+  if command -v systemctl >/dev/null && ! systemctl is-enabled --quiet docker 2>/dev/null; then
+    warn "Docker no arranca con el sistema. Ejecuta: sudo systemctl enable docker containerd"
+  fi
   # Cada servicio puede aportar su propio init (secretos, configs) en services/<svc>/init.sh
   for svc in $(available_services); do
     local hook="$ROOT/services/$svc/init.sh"
@@ -72,17 +85,31 @@ cmd_up()      { require_docker; ensure_network; compose up -d --remove-orphans "
 cmd_down() {
   if (( $# )); then compose rm -sf "$@"; else compose down; fi
 }
+# Falla con mensaje claro si algún servicio no está incluido en el orquestador.
+check_services() {
+  local enabled
+  enabled="$(enabled_services)" || die "docker-compose.yml inválido. Revisa con: manage config"
+  for s in "$@"; do
+    grep -qx -- "$s" <<<"$enabled" || die "Servicio '$s' no incluido. Disponibles: $(tr '\n' ' ' <<<"$enabled")"
+  done
+}
+
+# -f/--force puede ir en cualquier posición: restart -f samba | restart samba -f
 cmd_restart() {
-  case "${1:-}" in
-    -f|--force) shift; cmd_rebuild "$@" ;;
-    *) compose restart "$@" ;;
-  esac
+  local force=0 args=()
+  for a in "$@"; do
+    case "$a" in -f|--force) force=1 ;; *) args+=("$a") ;; esac
+  done
+  if (( force )); then cmd_rebuild "${args[@]}"; return; fi
+  require_docker; check_services "${args[@]}"
+  compose restart "${args[@]}"
+  cmd_status
 }
 
 # Reinicio forzado: elimina contenedores, descarga imágenes nuevas, reconstruye sin caché
 # y recrea en segundo plano (-d). Conserva los volúmenes con nombre (datos).
 cmd_rebuild() {
-  require_docker; ensure_network
+  require_docker; check_services "$@"; ensure_network
   info "Reinicio forzado sin caché: ${*:-todos los servicios}"
   cmd_down "$@"
   compose build --no-cache --pull "$@"
