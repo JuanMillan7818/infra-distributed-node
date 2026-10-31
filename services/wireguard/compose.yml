@@ -41,7 +41,8 @@ services:
       resources:
         limits:
           cpus: "0.30"
-          memory: 128M
+          # 256M: wg-easy (Node.js) usa ~115M en reposo; con 128M el panel/API lo tumbaba por OOM.
+          memory: 256M
     logging:
       driver: json-file
       options:
