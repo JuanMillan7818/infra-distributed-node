@@ -74,7 +74,7 @@ switch (e.evento) {
             acc.total += num(p.total);
             s.productos[p.nombre] = acc;
         }
-        s.serie.push({ x: ahora, y: s.total });
+        s.serie.push({ x: ahora, y: s.total, f: e.factura, m: num(e.total) });
         s.serie = s.serie.slice(-500);
         registrar(credito ? 'credito' : 'venta', `Venta ${credito ? 'a crédito' : 'de contado'} #${e.factura}`,
             `${e.cliente || 'Cliente'} · ${num(e.unidades)} und`, num(e.total));
@@ -178,7 +178,7 @@ TABLERO = r"""
         </div>
         <div class="px-plot">
           <div class="px-ylabels"><span v-for="t in chart.ticks" :key="t.v" :style="{ top: t.pct + '%' }">{{ copCorto(t.v) }}</span></div>
-          <div class="px-canvas">
+          <div class="px-canvas" @pointermove="onHover" @pointerleave="hover = null">
             <svg viewBox="0 0 1000 300" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="pxArea" x1="0" y1="0" x2="0" y2="1">
@@ -194,6 +194,16 @@ TABLERO = r"""
             <span class="px-goal-label" :style="{ top: chart.goalPct + '%' }">Meta {{ copCorto(d.meta) }}</span>
             <span v-if="chart.line" class="px-dot" :style="{ top: chart.lastPct + '%' }"></span>
             <div v-if="!chart.line" class="px-empty">Esperando la primera venta del día…</div>
+            <template v-if="hover && chart.line">
+              <span class="px-cross" :style="{ left: hover.left + '%' }"></span>
+              <span class="px-hdot" :style="{ left: hover.left + '%', top: hover.top + '%' }"></span>
+              <div class="px-tip" :class="{ flip: hover.left > 65 }" :style="{ left: hover.left + '%', top: hover.tipTop + '%' }">
+                <div class="px-tip-time">{{ hover.hora }}</div>
+                <div class="px-tip-total">{{ cop(hover.total) }}</div>
+                <div class="px-tip-sale" v-if="hover.venta">Venta #{{ hover.venta.f }} · +{{ cop(hover.venta.m) }}</div>
+                <div class="px-tip-sale" v-else>acumulado a esa hora</div>
+              </div>
+            </template>
           </div>
         </div>
         <div class="px-xlabels"><span v-for="(l, i) in chart.xlabels" :key="i">{{ l }}</span></div>
@@ -287,6 +297,7 @@ export default {
     const svg = (body) => '<svg viewBox="0 0 24 24">' + body + '</svg>'
     return {
       now: Date.now(),
+      hover: null,
       vis: {},
       toasts: [],
       seen: {},
@@ -358,6 +369,9 @@ export default {
       const fmt = new Intl.DateTimeFormat('es-CO', { timeZone: this.tz, hour: '2-digit', minute: '2-digit', hour12: false })
       const xlabels = [0, 1, 2, 3, 4].map((i) => fmt.format(new Date(start + (span * i) / 4)))
       return {
+        start,
+        span,
+        maxY,
         line,
         area: line ? `${line} V ${H} H 0 Z` : '',
         ticks,
@@ -436,6 +450,33 @@ export default {
         if (k < 1) this.raf = requestAnimationFrame(step)
       }
       this.raf = requestAnimationFrame(step)
+    },
+    onHover (ev) {
+      const pts = this.d.serie || []
+      if (!pts.length) return
+      const r = ev.currentTarget.getBoundingClientRect()
+      const c = this.chart
+      const t = c.start + Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)) * c.span
+      // Se "imanta" a la venta más cercana (a menos de 14 px); si no, el acumulado a esa hora.
+      let venta = null
+      let best = 14
+      let total = 0
+      for (const p of pts) {
+        if (p.x <= t) total = p.y
+        const dist = Math.abs(((p.x - t) / c.span) * r.width)
+        if (dist < best) { best = dist; venta = p }
+      }
+      const x = venta ? venta.x : t
+      const y = venta ? venta.y : total
+      const top = (1 - y / c.maxY) * 100
+      this.hover = {
+        left: ((x - c.start) / c.span) * 100,
+        top,
+        tipTop: Math.min(Math.max(top, 16), 84),
+        total: y,
+        venta: venta && venta.f ? venta : null,
+        hora: new Intl.DateTimeFormat('es-CO', { timeZone: this.tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date(x))
+      }
     },
     cerrar (id) { this.toasts = this.toasts.filter((t) => t.id !== id) },
     color (tipo) { return this.colors[tipo] || '#94a3b8' },
@@ -557,6 +598,21 @@ export default {
   transform: translate(50%, -50%); box-shadow: 0 0 0 4px rgba(59, 140, 255, .25); animation: px-pulse 1.6s infinite;
 }
 .paxia-ops .px-xlabels { display: flex; justify-content: space-between; margin: 8px 0 0 64px; font-size: 11.5px; color: var(--muted); }
+.paxia-ops .px-canvas { cursor: crosshair; touch-action: pan-y; }
+.paxia-ops .px-cross { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(148, 178, 230, .4); pointer-events: none; }
+.paxia-ops .px-hdot {
+  position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 3px solid #3b8cff;
+  transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 0 12px rgba(59, 140, 255, .9);
+}
+.paxia-ops .px-tip {
+  position: absolute; z-index: 5; transform: translate(14px, -50%); pointer-events: none; white-space: nowrap;
+  background: rgba(7, 21, 48, .96); border: 1px solid rgba(59, 140, 255, .45); border-radius: 10px; padding: 8px 12px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
+}
+.paxia-ops .px-tip.flip { transform: translate(calc(-100% - 14px), -50%); }
+.paxia-ops .px-tip-time { color: var(--muted); font-size: 12px; }
+.paxia-ops .px-tip-total { font-size: 17px; font-weight: 700; margin: 2px 0; }
+.paxia-ops .px-tip-sale { color: #4ade80; font-size: 12.5px; font-weight: 600; }
 .paxia-ops .px-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; }
 .paxia-ops .px-empty.static { position: static; padding: 24px 0; text-align: center; }
 
