@@ -5,7 +5,12 @@ services:
     container_name: ubuntu-samba
     environment:
       - WORKGROUP=WORKGROUP
+      # Recurso de prueba: visible, con escritura y acceso de invitado (cualquier usuario entra
+      # como invitado). Solo alcanzable por red-interna/VPN: nunca publicar 445 a Internet.
       - SHARE=publico;/samba/shared;yes;no;yes;all;none
+      # Ajusta dueño y permisos de las carpetas compartidas al arrancar: sin esto el volumen
+      # queda de root y el invitado puede entrar pero no escribir ("no tiene permisos").
+      - PERMISSIONS=true
     # En Windows (local) 139/445 los ocupa el propio SMB del sistema: usar otros en .env.
     ports:
       - "${SAMBA_NETBIOS_PORT:-139}:139"
