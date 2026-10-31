@@ -1,0 +1,39 @@
+# Opcional, SOLO para Codespaces: WireGuard dentro de WebSocket para probar la VPN desde fuera.
+# El proxy de Codespaces solo deja pasar HTTP(S)/WebSocket, no el UDP 51820 de WireGuard.
+# NO está en el "include" del orquestador (en la EC2 el UDP llega directo). Guía: README.md.
+services:
+  wstunnel:
+    image: ghcr.io/erebe/wstunnel:${WSTUNNEL_TAG:-latest}
+    container_name: wstunnel
+    restart: unless-stopped
+    # WSTUNNEL_PATH_PREFIX lo genera "manage init": sin él el proxy público rechaza el túnel.
+    env_file:
+      - path: ../../secrets/wstunnel.env
+        required: false
+    # TLS lo termina el proxy de Codespaces: aquí escucha WebSocket plano.
+    # Solo permite reenviar al puerto UDP de wg-easy (por la red interna).
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        exec /home/app/wstunnel server ws://0.0.0.0:8080
+        --restrict-to wg-easy:51820
+        --restrict-http-upgrade-path-prefix "$$WSTUNNEL_PATH_PREFIX"
+    ports:
+      - "127.0.0.1:${WSTUNNEL_PORT:-8080}:8080"   # Codespaces lo reenvía; marcarlo como Public
+    networks:
+      - red-interna
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: 64M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  red-interna:
+    name: red-interna
+    external: true
