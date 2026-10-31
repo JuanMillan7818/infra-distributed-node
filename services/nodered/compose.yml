@@ -1,0 +1,51 @@
+# Tablero en tiempo real: se suscribe a los eventos que la web de facturación publica en Mosquitto.
+services:
+  nodered:
+    build:
+      context: .
+      args:
+        NODE_RED_TAG: ${NODE_RED_TAG:-4.1}
+    image: sistema-distribuido/nodered:local
+    # Siempre desde el Dockerfile local: así "manage up" aplica los cambios de flows.json.
+    pull_policy: build
+    container_name: nodered
+    restart: unless-stopped
+    ports:
+      - "${NODERED_PORT:-1880}:1880"   # Editor (/) y tablero (/dashboard)
+    environment:
+      - TZ=America/Bogota
+      - MQTT_TOPIC_PREFIX=${MQTT_TOPIC_PREFIX:-paxia}
+      - META_DIARIA=${META_DIARIA:-1000000}
+    secrets:
+      - mqtt_nodered_password
+      - nodered_admin_password
+    volumes:
+      - nodered_data:/data   # Contexto persistente (acumulados del tablero)
+    networks:
+      - red-interna
+    depends_on:
+      - mosquitto
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+secrets:
+  mqtt_nodered_password:
+    file: ../../secrets/mqtt_nodered_password.txt
+  nodered_admin_password:
+    file: ../../secrets/nodered_admin_password.txt
+
+volumes:
+  nodered_data:
+
+networks:
+  red-interna:
+    name: red-interna
+    external: true

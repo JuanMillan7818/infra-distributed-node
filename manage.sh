@@ -298,7 +298,8 @@ EOF
     exec) cat <<EOF
 manage exec <svc> <comando...>
   Ejecuta un comando dentro del contenedor en ejecución.
-  Ejemplo: manage exec mosquitto mosquitto_sub -t '#' -v
+  Ejemplo (MQTT exige usuario: admin lee todo):
+    manage exec mosquitto sh -c 'mosquitto_sub -u admin -P "\$(cat /run/secrets/mqtt_admin_password)" -t "#" -v'
 EOF
     ;;
     backup) cat <<EOF

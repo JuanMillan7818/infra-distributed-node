@@ -1,24 +1,46 @@
 services:
   mosquitto:
-    image: eclipse-mosquitto:latest
+    image: eclipse-mosquitto:${MOSQUITTO_TAG:-2}
     container_name: mosquitto_broker
     restart: unless-stopped
+    # Genera usuarios y ACL desde los secretos y arranca el broker (ver config/start.sh).
+    command: ["sh", "/mosquitto/config/start.sh"]
     ports:
-      - "${MQTT_PORT:-1883}:1883"
+      - "${MQTT_PORT:-1883}:1883"         # MQTT TCP
+      - "${MQTT_WS_PORT:-9001}:9001"      # MQTT WebSocket (Codespaces: marcar Public)
     # Logs solo por stdout (ver mosquitto.conf): Docker los rota con "logging".
     volumes:
       - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./config/start.sh:/mosquitto/config/start.sh:ro
       - ./data:/mosquitto/data
     environment:
       - TZ=America/Bogota
+      - MQTT_TOPIC_PREFIX=${MQTT_TOPIC_PREFIX:-paxia}
+    secrets:
+      - mqtt_admin_password
+      - mqtt_facturacion_password
+      - mqtt_nodered_password
     networks:
       - red-interna
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
     # Rotación de logs: máx. 3 archivos de 10 MB (30 MB por contenedor).
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+secrets:
+  mqtt_admin_password:
+    file: ../../secrets/mqtt_admin_password.txt
+  mqtt_facturacion_password:
+    file: ../../secrets/mqtt_facturacion_password.txt
+  mqtt_nodered_password:
+    file: ../../secrets/mqtt_nodered_password.txt
 
 networks:
   red-interna:
