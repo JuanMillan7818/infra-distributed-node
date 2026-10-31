@@ -1,6 +1,6 @@
 {
   "uid": "glances-host",
-  "title": "Servidor - Métricas en tiempo real (Glances)",
+  "title": "Servidor - Metricas en tiempo real (Glances)",
   "tags": [
     "glances",
     "host",
@@ -214,7 +214,7 @@
     {
       "id": 4,
       "type": "gauge",
-      "title": "Carga (1 min) / núcleos",
+      "title": "Carga (1 min) / nucleos",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"

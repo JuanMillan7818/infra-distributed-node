@@ -65,7 +65,7 @@ panels = [
     stat("CPU", "glances_cpu_total", "percent", 0, 0),
     stat("Memoria RAM", "glances_mem_percent", "percent", 6, 0),
     stat("Swap", "glances_memswap_percent", "percent", 12, 0),
-    stat("Carga (1 min) / núcleos", "glances_load_min1 / glances_load_cpucore * 100",
+    stat("Carga (1 min) / nucleos", "glances_load_min1 / glances_load_cpucore * 100",
          "percent", 18, 0, thresholds=(70, 100), maxv=150),
 
     ts("CPU por tipo (%)", [("glances_cpu_user", "user"), ("glances_cpu_system", "system"),
@@ -94,7 +94,9 @@ panels = [
 
 dash = {
     "uid": "glances-host",
-    "title": "Servidor - Métricas en tiempo real (Glances)",
+    # Títulos solo ASCII: Grafana los manda en los headers X-Dashboard-Title / X-Panel-Title
+    # y el proxy de Codespaces (dev tunnels) rechaza headers no ASCII con 400/502.
+    "title": "Servidor - Metricas en tiempo real (Glances)",
     "tags": ["glances", "host", "sistema-distribuido"],
     "timezone": "browser",
     "refresh": "5s",
